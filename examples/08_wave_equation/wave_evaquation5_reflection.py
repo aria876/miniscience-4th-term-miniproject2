@@ -33,28 +33,32 @@ def create_mesh_with_obstacle(comm):
     gmsh.initialize()
     if comm.rank == 0:
         # Channel and obstacle parameters
-        L, H = 2, 2
+        L, H = 6, 2
         # Вершина прямого угла в левом верхнем углу (-1, 1)
         # Для равнобедренного треугольника L должно равняться H
         # Создаем 3 точки
         # p1: левый верхний угол (вершина прямого угла)
-        p1 = gmsh.model.occ.addPoint(-1, 1, 0)
+        p1 = gmsh.model.occ.addPoint(1-L, 1, 0)
         # p2: правый верхний угол (конец горизонтального катета)
-        p2 = gmsh.model.occ.addPoint(-1 + L, 1, 0)
+        p2 = gmsh.model.occ.addPoint(1, 1, 0)
         # p3: левый нижний угол (конец вертикального катета)
         p3 = gmsh.model.occ.addPoint(-1, 1 - H, 0)
+        # p4 
+        p4 = gmsh.model.occ.addPoint(1-L, 1-H, 0)
 
         # Создаем 3 линии, соединяющие точки
         # Линия от p1 к p2 (горизонтальный катет)
         l1 = gmsh.model.occ.addLine(p1, p2)
         # Линия от p2 к p3 (гипотенуза)
         l2 = gmsh.model.occ.addLine(p2, p3)
-        # Линия от p3 к p1 (вертикальный катет)
-        l3 = gmsh.model.occ.addLine(p3, p1)
+
+        l3 = gmsh.model.occ.addLine(p3, p4)
+
+        l4 = gmsh.model.occ.addLine(p4, p1)
 
         # Создаем замкнутый контур из линий
         # Важно: порядок линий должен быть последовательным
-        curve_loop = gmsh.model.occ.addCurveLoop([l1, l2, l3])
+        curve_loop = gmsh.model.occ.addCurveLoop([l1, l2, l3, l4])
 
         # Создаем поверхность (сам треугольник)
         triangle = gmsh.model.occ.addPlaneSurface([curve_loop])
@@ -145,8 +149,8 @@ def define_physical_parameters():
     """Define simulation time and material properties for copper"""
     params = {
         # Simulation parameters
-        "T_final": 100.0,  # Final time [s]
-        "num_steps": 500,  # Number of time steps
+        "T_final": 400.0,  # Final time [s]
+        "num_steps": 1000,  # Number of time steps
         # Material properties (Copper)
         "k": 401.0,  # Thermal conductivity [W/(m·K)]
         "rho": 8960.0,  # Density [kg/m³]
@@ -315,7 +319,7 @@ def run_transient_simulation(domain, V, a, L, u_n, u_n_n, bcs, params):
 
 
 #Генератор гармонических волн
-    T_generator = 15 #period
+    T_generator = 20 #period
     w = 2 * np.pi / T_generator
     # Получаем координаты всех узлов (степеней свободы)
     coords = V.tabulate_dof_coordinates()  # shape = (num_dofs, 3) (x, y, z)
@@ -323,7 +327,7 @@ def run_transient_simulation(domain, V, a, L, u_n, u_n_n, bcs, params):
 #   circle1 = (coords[:, 0]**2 + (coords[:, 1] - 0.25)**2) < 0.01   # радиус
 #   circle2 = (coords[:, 0]**2 + (coords[:, 1] + 0.25)**2) < 0.01
     K1 = (coords[:, 1] > 0.99)
-    K2 = (abs(coords[:, 0]) < 0.4)
+    K2 = (abs(coords[:, 0]) < 0.3)
     inside_generator = np.logical_and(K1, K2) #np.logical_or(circle1, circle2)
 
     # 3. Time-stepping loop
